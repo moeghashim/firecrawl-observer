@@ -197,8 +197,9 @@ export default function HomePage() {
         duration: 3000
       })
       
-      // Immediate reload to show authenticated state
-      window.location.reload()
+      // Use Next.js router to refresh and update auth state
+      router.push('/')
+      router.refresh()
     } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
       // Check for InvalidAccountId in various ways
       const errorMessage = error.message || error.toString() || '';
