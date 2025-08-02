@@ -191,10 +191,8 @@ export default function HomePage() {
         duration: 3000
       })
       
-      // Force a router refresh to ensure auth state is updated
-      setTimeout(() => {
-        router.refresh()
-      }, 100)
+      // The auth state should update automatically via Convex
+      // No need to manually refresh - let React handle the re-render
     } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
       // Check for InvalidAccountId in various ways
       const errorMessage = error.message || error.toString() || '';
