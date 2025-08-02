@@ -184,6 +184,8 @@ export default function HomePage() {
         flow: authMode,
       })
       console.log('SignIn result:', result)
+      console.log('Current auth state before redirect:', { isAuthenticated, authLoading })
+      
       // Clear form on successful auth
       setEmail('')
       setPassword('')
@@ -201,9 +203,10 @@ export default function HomePage() {
       // Set a flag that we just authenticated
       setJustAuthenticated(true)
       
-      // Try multiple approaches to update auth state
-      setTimeout(() => router.refresh(), 100)
-      setTimeout(() => window.location.reload(), 2000)
+      // Immediate redirect to dashboard - this is the most reliable approach
+      setTimeout(() => {
+        window.location.href = '/'
+      }, 1500) // Give the success toast time to show
     } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
       // Check for InvalidAccountId in various ways
       const errorMessage = error.message || error.toString() || '';
@@ -490,7 +493,7 @@ export default function HomePage() {
                         type="button"
                         variant="orange" 
                         className="w-full"
-                        onClick={() => window.location.reload()}
+                        onClick={() => window.location.href = '/'}
                       >
                         Continue to Dashboard →
                       </Button>
