@@ -52,6 +52,11 @@ export default function HomePage() {
   // Debug auth state changes
   useEffect(() => {
     console.log('Auth state changed:', { isAuthenticated, authLoading, timestamp: new Date().toISOString() })
+    // Also log localStorage to see if tokens are stored
+    console.log('LocalStorage auth tokens:', {
+      refreshToken: typeof window !== 'undefined' ? localStorage.getItem('convex-refresh-token') : 'SSR',
+      token: typeof window !== 'undefined' ? localStorage.getItem('convex-token') : 'SSR'
+    })
   }, [isAuthenticated, authLoading])
   
   // Auth state
@@ -172,11 +177,12 @@ export default function HomePage() {
     }
 
     try {
-      await signIn("password", {
+      const result = await signIn("password", {
         email: trimmedEmail,
         password,
         flow: authMode,
       })
+      console.log('SignIn result:', result)
       // Clear form on successful auth
       setEmail('')
       setPassword('')
@@ -191,8 +197,10 @@ export default function HomePage() {
         duration: 3000
       })
       
-      // Force a page reload to ensure auth state updates properly
-      window.location.reload()
+      // Give time for auth tokens to be stored, then reload
+      setTimeout(() => {
+        window.location.reload()
+      }, 500)
     } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
       // Check for InvalidAccountId in various ways
       const errorMessage = error.message || error.toString() || '';
