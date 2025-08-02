@@ -65,6 +65,7 @@ export default function HomePage() {
   const [password, setPassword] = useState('')
   const [isAuthenticating, setIsAuthenticating] = useState(false)
   const [helperText, setHelperText] = useState('')
+  const [justAuthenticated, setJustAuthenticated] = useState(false)
   
   // Website monitoring state
   const [url, setUrl] = useState('')
@@ -197,9 +198,12 @@ export default function HomePage() {
         duration: 3000
       })
       
-      // Use Next.js router to refresh and update auth state
-      router.push('/')
-      router.refresh()
+      // Set a flag that we just authenticated
+      setJustAuthenticated(true)
+      
+      // Try multiple approaches to update auth state
+      setTimeout(() => router.refresh(), 100)
+      setTimeout(() => window.location.reload(), 2000)
     } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
       // Check for InvalidAccountId in various ways
       const errorMessage = error.message || error.toString() || '';
@@ -462,24 +466,35 @@ export default function HomePage() {
                       )}
                     </div>
                     
-                    <Button 
-                      type="submit" 
-                      variant="orange" 
-                      className="w-full"
-                      disabled={isAuthenticating}
-                    >
-                      {isAuthenticating ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          {authMode === 'signIn' ? 'Signing in...' : 'Creating account...'}
-                        </>
-                      ) : (
-                        <>
-                          <LogIn className="mr-2 h-4 w-4" />
-                          {authMode === 'signIn' ? 'Sign In' : 'Sign Up'}
-                        </>
-                      )}
-                    </Button>
+                    {!justAuthenticated ? (
+                      <Button 
+                        type="submit" 
+                        variant="orange" 
+                        className="w-full"
+                        disabled={isAuthenticating}
+                      >
+                        {isAuthenticating ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            {authMode === 'signIn' ? 'Signing in...' : 'Creating account...'}
+                          </>
+                        ) : (
+                          <>
+                            <LogIn className="mr-2 h-4 w-4" />
+                            {authMode === 'signIn' ? 'Sign In' : 'Sign Up'}
+                          </>
+                        )}
+                      </Button>
+                    ) : (
+                      <Button 
+                        type="button"
+                        variant="orange" 
+                        className="w-full"
+                        onClick={() => window.location.reload()}
+                      >
+                        Continue to Dashboard →
+                      </Button>
+                    )}
                   </form>
                   
                   <p className="text-center text-sm text-zinc-600 mt-4">
