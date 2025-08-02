@@ -51,7 +51,7 @@ export default function HomePage() {
   
   // Debug auth state changes
   useEffect(() => {
-    console.log('Auth state:', { isAuthenticated, authLoading })
+    console.log('Auth state changed:', { isAuthenticated, authLoading, timestamp: new Date().toISOString() })
   }, [isAuthenticated, authLoading])
   
   // Auth state
@@ -191,8 +191,8 @@ export default function HomePage() {
         duration: 3000
       })
       
-      // The auth state should update automatically via Convex
-      // No need to manually refresh - let React handle the re-render
+      // Force a page reload to ensure auth state updates properly
+      window.location.reload()
     } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
       // Check for InvalidAccountId in various ways
       const errorMessage = error.message || error.toString() || '';
