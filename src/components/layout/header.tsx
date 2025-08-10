@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useState, useEffect, useCallback } from 'react'
-import { Github, LogOut, User, Loader2, ChevronDown, Code, BookOpen, Settings, Coins } from 'lucide-react'
+import { Github, LogOut, User, Loader2, ChevronDown, BookOpen, Settings, Coins } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -80,12 +80,6 @@ export function Header({ showCTA = true, ctaText = "Use this template", ctaHref 
           )}
           {isAuthenticated ? (
             <>
-              <Link href="/api-docs">
-                <Button variant="orange" size="sm" className="gap-2">
-                  <Code className="h-4 w-4" />
-                  <span className="hidden sm:inline">API</span>
-                </Button>
-              </Link>
               <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="code" size="sm" className="gap-2">
