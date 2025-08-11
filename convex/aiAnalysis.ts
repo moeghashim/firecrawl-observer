@@ -54,17 +54,60 @@ Analyze the provided diff and return a JSON response with:
     try {
       // Use custom base URL if provided, otherwise default to OpenAI
       const baseUrl = userSettings.aiBaseUrl || "https://api.openai.com/v1";
-      const apiUrl = `${baseUrl.replace(/\/$/, '')}/chat/completions`;
-      
-      // Call AI API
-      const response = await fetch(apiUrl, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${userSettings.aiApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: userSettings.aiModel || "gpt-4o-mini",
+      const model = userSettings.aiModel || "gpt-4o-mini";
+      const isGPT5 = model.includes("gpt-5");
+
+      let apiUrl, apiParams, response, data, messageContent;
+
+      if (isGPT5) {
+        // Use Responses API for GPT-5
+        apiUrl = `${baseUrl.replace(/\/$/, '')}/responses`;
+        apiParams = {
+          model,
+          reasoning: { effort: "medium" }, // Use medium effort for analysis tasks
+          instructions: systemPrompt,
+          input: `Website: ${args.websiteName} (${args.websiteUrl})
+              
+Changes detected:
+${args.diff.text}
+
+Please analyze these changes and determine if they are meaningful.`
+        };
+
+        response = await fetch(apiUrl, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${userSettings.aiApiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(apiParams),
+        });
+
+        if (!response.ok) {
+          const error = await response.text();
+          console.error("GPT-5 API error:", error);
+          return;
+        }
+
+        data = await response.json();
+        console.log("GPT-5 AI analysis response:", JSON.stringify(data, null, 2));
+
+        // Use output_text convenience property or parse output array
+        messageContent = data.output_text;
+        if (!messageContent && data.output && data.output.length > 0) {
+          const textOutput = data.output.find((item: any) => 
+            item.content && item.content.some((c: any) => c.type === "output_text")
+          );
+          if (textOutput) {
+            const textContent = textOutput.content.find((c: any) => c.type === "output_text");
+            messageContent = textContent?.text;
+          }
+        }
+      } else {
+        // Use Chat Completions API for other models
+        apiUrl = `${baseUrl.replace(/\/$/, '')}/chat/completions`;
+        apiParams = {
+          model,
           messages: [
             {
               role: "system",
@@ -81,19 +124,52 @@ Please analyze these changes and determine if they are meaningful.`,
             },
           ],
           temperature: 0.3,
-          max_tokens: 500,
+          max_completion_tokens: 500,
           response_format: { type: "json_object" },
-        }),
-      });
+        };
 
-      if (!response.ok) {
-        const error = await response.text();
-        console.error("AI API error:", error);
-        return;
+        response = await fetch(apiUrl, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${userSettings.aiApiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(apiParams),
+        });
+
+        if (!response.ok) {
+          const error = await response.text();
+          console.error("Chat API error:", error);
+          return;
+        }
+
+        data = await response.json();
+        console.log("Chat AI analysis response:", JSON.stringify(data, null, 2));
+        
+        // Check if response has the expected structure
+        if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+          console.error("Invalid AI response structure:", JSON.stringify(data));
+          return;
+        }
+        
+        messageContent = data.choices[0].message.content;
       }
 
-      const data = await response.json();
-      const aiResponse = JSON.parse(data.choices[0].message.content);
+      // Common validation for message content
+      if (!messageContent) {
+        console.error("Empty message content in AI response");
+        return;
+      }
+      
+      console.log("Message content to parse:", messageContent);
+      
+      let aiResponse;
+      try {
+        aiResponse = JSON.parse(messageContent);
+      } catch (parseError) {
+        console.error(`Failed to parse AI response as JSON: "${messageContent}". Parse error:`, parseError);
+        return;
+      }
 
       // Validate response structure
       if (typeof aiResponse.score !== "number" || 

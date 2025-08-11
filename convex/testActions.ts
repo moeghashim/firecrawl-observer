@@ -29,17 +29,55 @@ export const testAIModel = action({
     }
     
     const baseUrl = userSettings.aiBaseUrl || "https://api.openai.com/v1";
-    const apiUrl = `${baseUrl.replace(/\/$/, '')}/chat/completions`;
+    const model = userSettings.aiModel || "gpt-4o-mini";
+    const isGPT5 = model.includes("gpt-5");
     
     try {
-      const response = await fetch(apiUrl, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${userSettings.aiApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: userSettings.aiModel || "gpt-4o-mini",
+      let apiUrl, apiParams, response, data, messageContent;
+
+      if (isGPT5) {
+        // Use Responses API for GPT-5
+        apiUrl = `${baseUrl.replace(/\/$/, '')}/responses`;
+        apiParams = {
+          model,
+          reasoning: { effort: "low" },
+          instructions: "You are a helpful assistant. Please respond with a simple JSON object.",
+          input: "Please respond with a JSON object containing: { \"status\": \"success\", \"message\": \"Connection successful\", \"model\": \"<the model you are>\" }"
+        };
+
+        response = await fetch(apiUrl, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${userSettings.aiApiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(apiParams),
+        });
+
+        if (!response.ok) {
+          const error = await response.text();
+          throw new Error(`API error: ${response.status} - ${error}`);
+        }
+
+        data = await response.json();
+        console.log("GPT-5 API response:", JSON.stringify(data, null, 2));
+
+        // Use output_text convenience property or parse output array
+        messageContent = data.output_text;
+        if (!messageContent && data.output && data.output.length > 0) {
+          const textOutput = data.output.find((item: any) => 
+            item.content && item.content.some((c: any) => c.type === "output_text")
+          );
+          if (textOutput) {
+            const textContent = textOutput.content.find((c: any) => c.type === "output_text");
+            messageContent = textContent?.text;
+          }
+        }
+      } else {
+        // Use Chat Completions API for other models
+        apiUrl = `${baseUrl.replace(/\/$/, '')}/chat/completions`;
+        apiParams = {
+          model,
           messages: [
             {
               role: "system",
@@ -51,18 +89,48 @@ export const testAIModel = action({
             },
           ],
           temperature: 0.3,
-          max_tokens: 100,
+          max_completion_tokens: 100,
           response_format: { type: "json_object" },
-        }),
-      });
-      
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`API error: ${response.status} - ${error}`);
+        };
+
+        response = await fetch(apiUrl, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${userSettings.aiApiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(apiParams),
+        });
+
+        if (!response.ok) {
+          const error = await response.text();
+          throw new Error(`API error: ${response.status} - ${error}`);
+        }
+
+        data = await response.json();
+        console.log("Chat API response:", JSON.stringify(data, null, 2));
+
+        // Check if response has the expected structure
+        if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+          throw new Error(`Invalid API response structure: ${JSON.stringify(data)}`);
+        }
+
+        messageContent = data.choices[0].message.content;
       }
       
-      const data = await response.json();
-      const result = JSON.parse(data.choices[0].message.content);
+      // Common validation for message content
+      if (!messageContent) {
+        throw new Error("Empty message content in API response");
+      }
+      
+      console.log("Message content to parse:", messageContent);
+      
+      let result;
+      try {
+        result = JSON.parse(messageContent);
+      } catch (parseError) {
+        throw new Error(`Failed to parse AI response as JSON: "${messageContent}". Parse error: ${parseError}`);
+      }
       
       return {
         success: true,
